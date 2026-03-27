@@ -90,7 +90,7 @@ header h1 {
 /* 메뉴 화면 인사말 무지개 애니메이션 */
 .menu-greeting {
     display: inline-block;
-    font-size: 1.2rem; /* 요청에 따라 1.2로 키움 */
+    font-size: 1.4rem; /* 요청에 따라 1.4로 키움 */
     white-space: nowrap; /* 줄바꿈 방지 */
     animation: rainbow-name 6s ease-in-out infinite; /* 6초로 더 천천히 */
     text-shadow: 1px 1px 0 rgba(0,0,0,0.1), 0 0 8px rgba(255, 150, 200, 0.3);
@@ -287,9 +287,9 @@ body.extreme-shake {
 .overlay-content {
     background: rgba(255, 255, 255, 0.9); /* 오버레이 내부도 투명하게 */
     color: #333;
-    padding: 25px; /* 넓게 사용하기 위해 패딩 축소 */
+    padding: 15px 10px; /* 더 많은 공간 확보를 위해 최소화 */
     border-radius: 30px;
-    width: 80%;
+    width: 92%; /* 글자 크기 증설에 따른 폭 확장 */
 }
 
 .overlay-content h2 { font-size: 1.6rem; color: var(--primary-color); white-space: nowrap; }
