@@ -15,7 +15,10 @@
         <div id="effect-layer" class="effect-layer hidden"></div>
 
         <header>
-            <h1 id="game-title">✨ 반짝반짝 구구단 모험! ✨</h1>
+            <div id="game-progress" class="game-progress hidden">
+                문제 <span id="current-q">1</span> / 10
+            </div>
+            <h1 id="game-title">✨ 반짝반짝 수학 모험! ✨</h1>
             <div class="score-board">
                 <span>점수: <span id="score">0</span></span>
                 <span>남은 기회: <span id="lives">❤️❤️❤️</span></span>
@@ -24,11 +27,13 @@
 
         <main id="game-screen">
             <div class="problem-card" id="problem-card">
-                <span id="num1">?</span>
-                <span class="operator">×</span>
-                <span id="num2">?</span>
-                <span class="operator">=</span>
-                <span id="answer-placeholder">?</span>
+                <div id="shape-visual" class="shape-visual"></div>
+                <div class="problem-text">
+                    <span id="num1">?</span>
+                    <span class="operator">×</span>
+                    <span id="num2">?</span>
+                    <span id="answer-placeholder">?</span>
+                </div>
             </div>
 
             <div class="options-container" id="options">
@@ -38,11 +43,14 @@
             <div id="feedback" class="feedback-msg"></div>
         </main>
 
-        <div id="start-screen" class="overlay">
+        <div id="menu-screen" class="overlay">
             <div class="overlay-content">
-                <h2>반가워요, 꼬마 수학자!</h2>
-                <p>구구단 문제를 풀고 별을 모아봐요!</p>
-                <button id="start-btn">게임 시작!</button>
+                <h2>반가워요, 꼬마 수학자! </h2>
+                <p>풀어보고 싶은 수학 모험을 선택해 봐요! </p>
+                <div class="menu-btns">
+                    <button class="menu-btn" data-mode="gugudan">🔢 구구단 모험</button>
+                    <button class="menu-btn" data-mode="shape">📐 도형 모험</button>
+                </div>
             </div>
         </div>
 
