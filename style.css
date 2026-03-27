@@ -80,11 +80,31 @@ header h1 {
 }
 
 @keyframes title-sparkle {
-    0%   { transform: scale(1) rotate(0deg); filter: hue-rotate(0deg); }
+    0%   { transform: scale(1); filter: hue-rotate(0deg); }
     25%  { transform: scale(1.05) rotate(-1deg); filter: hue-rotate(30deg); }
     50%  { transform: scale(1.08); filter: hue-rotate(60deg); text-shadow: 0 0 12px rgba(255,200,0,0.7), 2px 2px 0 #fff; }
     75%  { transform: scale(1.05) rotate(1deg); filter: hue-rotate(30deg); }
-    100% { transform: scale(1) rotate(0deg); filter: hue-rotate(0deg); }
+    100% { transform: scale(1); filter: hue-rotate(0deg); }
+}
+
+/* 메뉴 화면 인사말 무지개 애니메이션 */
+.menu-greeting {
+    display: inline-block;
+    font-size: 1.2rem; /* 요청에 따라 1.2로 키움 */
+    white-space: nowrap; /* 줄바꿈 방지 */
+    animation: rainbow-name 6s ease-in-out infinite; /* 6초로 더 천천히 */
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.1), 0 0 8px rgba(255, 150, 200, 0.3);
+}
+
+@keyframes rainbow-name {
+    0%   { color: #ff6b6b; transform: translateY(0) scale(1); }
+    14%  { color: #ff9f43; transform: translateY(-2px) scale(1.02); }
+    28%  { color: #ffd32a; transform: translateY(0) scale(1); }
+    42%  { color: #0be881; transform: translateY(-2px) scale(1.02); }
+    57%  { color: #00d2d3; transform: translateY(0) scale(1); }
+    71%  { color: #a29bfe; transform: translateY(-2px) scale(1.02); }
+    85%  { color: #fd79a8; transform: translateY(0) scale(1); }
+    100% { color: #ff6b6b; transform: translateY(0) scale(1); }
 }
 
 .game-progress {
@@ -267,7 +287,7 @@ body.extreme-shake {
 .overlay-content {
     background: rgba(255, 255, 255, 0.9); /* 오버레이 내부도 투명하게 */
     color: #333;
-    padding: 40px;
+    padding: 25px; /* 넓게 사용하기 위해 패딩 축소 */
     border-radius: 30px;
     width: 80%;
 }
