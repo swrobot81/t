@@ -69,21 +69,6 @@ body {
     100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
 }
 
-.company-logo {
-    font-size: 1.2rem;
-    color: #444;
-    margin-bottom: 10px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-
-.logo-icon {
-    color: #0055a4; /* RS Automation 메인 블루 */
-    font-size: 1.5rem;
-}
 
 header h1 {
     color: var(--primary-color);
