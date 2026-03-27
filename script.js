@@ -276,6 +276,10 @@ function generateGugudanProblem() {
     const n2 = Math.floor(Math.random() * 9) + 1;
     currentAnswer = n1 * n2;
 
+    // 구구단은 큰 글씨로 중앙에
+    const problemTextEl = document.querySelector('.problem-text');
+    problemTextEl.classList.add('gugudan-text');
+
     num1El.innerText = n1;
     document.querySelector('.operator').style.display = 'inline';
     document.querySelector('.operator').innerText = '×';
@@ -286,6 +290,9 @@ function generateGugudanProblem() {
 }
 
 function generateShapeProblem() {
+    // 도형 모드에서는 작은 글씨
+    document.querySelector('.problem-text').classList.remove('gugudan-text');
+
     const randomIdx = Math.floor(Math.random() * shapeProblems.length);
     const problem = shapeProblems[randomIdx];
     currentAnswer = problem.ans;
