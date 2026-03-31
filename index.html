@@ -2,8 +2,8 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>반짝반짝 구구단 모험!</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>반짝반짝 수학 모험!</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,55 +14,113 @@
         <!-- 전체 화면 효과 레이어 -->
         <div id="effect-layer" class="effect-layer hidden"></div>
 
-        <header>
-            <div id="game-progress" class="game-progress hidden">
-                문제 <span id="current-q">1</span> / 10
+        <!-- [시작 화면] -->
+        <div id="start-screen" class="screen">
+            <h1 class="main-title">✨ 수학 모험 ✨</h1>
+            <p class="subtitle">반가워요! 정보를 입력하고 시작해볼까요?</p>
+            
+            <div class="input-group">
+                <label for="nickname">내 이름(별명)</label>
+                <input type="text" id="nickname" placeholder="여기에 입력하세요!" maxlength="8">
             </div>
-            <h1 id="game-title">✨ 반짝반짝 수학 모험! ✨</h1>
-            <div class="score-board">
-                <span>점수: <span id="score">0</span></span>
-                <span>남은 기회: <span id="lives">❤️❤️❤️</span></span>
-            </div>
-        </header>
 
-        <main id="game-screen">
-            <div class="problem-card" id="problem-card">
-                <div id="shape-visual" class="shape-visual"></div>
-                <div class="problem-text">
-                    <span id="num1">?</span>
-                    <span class="operator">×</span>
-                    <span id="num2">?</span>
-                    <span id="answer-placeholder">?</span>
+            <div class="selection-section">
+                <h3>학년 선택</h3>
+                <div class="grade-grid">
+                    <button class="grade-btn" data-grade="1">1</button>
+                    <button class="grade-btn" data-grade="2">2</button>
+                    <button class="grade-btn" data-grade="3">3</button>
+                    <button class="grade-btn" data-grade="4">4</button>
+                    <button class="grade-btn" data-grade="5">5</button>
+                    <button class="grade-btn" data-grade="6">6</button>
                 </div>
             </div>
 
-            <div class="options-container" id="options">
-                <!-- 선택지 버튼들이 여기에 생성됩니다 -->
-            </div>
-
-            <div id="feedback" class="feedback-msg"></div>
-        </main>
-
-        <div id="menu-screen" class="overlay">
-            <div class="overlay-content">
-                <h2><span class="menu-greeting">반가워! Su-A 공주 수학게임 해볼까!</span></h2>
-                <p>풀어보고 싶은 수학 모험을 선택해 봐요! </p>
-                <div class="menu-btns">
-                    <button class="menu-btn" data-mode="gugudan">🔢 구구단 모험</button>
-                    <button class="menu-btn" data-mode="shape">📐 도형 모험</button>
+            <div class="selection-section">
+                <h3>난이도 선택</h3>
+                <div class="difficulty-flex">
+                    <button class="diff-btn" data-diff="easy">초보</button>
+                    <button class="diff-btn selected" data-diff="medium">베테랑</button>
+                    <button class="diff-btn" data-diff="hard">마스터</button>
                 </div>
             </div>
+
+            <button id="start-game-btn" class="primary-btn">모험 시작하기! 🚀</button>
         </div>
 
-        <div id="game-over-screen" class="overlay hidden">
-            <div class="overlay-content">
-                <h2>게임 끝!</h2>
-                <p>최종 점수: <span id="final-score">0</span>점</p>
-                <button id="restart-btn">다시 하기</button>
-            </div>
+        <!-- [게임 화면] -->
+        <div id="game-screen" class="screen hidden">
+            <header>
+                <div class="progress-container">
+                    <div class="progress-bar" id="pb-fill"></div>
+                    <div id="game-progress" class="game-progress">
+                        <span class="q-label">문제</span>
+                        <span id="current-q" class="q-num">1</span> 
+                        <span class="q-total">/ 10</span>
+                    </div>
+                </div>
+                <div class="score-board">
+                    <span>점수: <span id="score">0</span></span>
+                    <span id="lives">❤️❤️❤️</span>
+                </div>
+            </header>
+
+            <main>
+                <div class="problem-card" id="problem-card">
+                    <div id="shape-visual" class="shape-visual"></div>
+                    <div class="problem-text">
+                        <span id="num1">?</span>
+                        <span class="operator">×</span>
+                        <span id="num2">?</span>
+                        <span id="answer-placeholder">?</span>
+                    </div>
+                </div>
+
+                <div class="options-container" id="options">
+                    <!-- 선택지 버튼들이 여기에 생성됩니다 -->
+                </div>
+
+                <!-- [하단 종료 버튼] -->
+                <button id="quit-btn" class="quit-btn">그만하기 🏠</button>
+            </main>
         </div>
-        <div class="version-badge">Ver 1.5</div>
+
+        <!-- [결과 화면] -->
+        <div id="game-over-screen" class="screen hidden">
+            <h2 class="game-over-title">🎉 모험 종료! 🎉</h2>
+            <div class="result-summary">
+                <p><span id="result-nickname"></span>님의 최종 점수</p>
+                <div class="final-score-display"><span id="final-score">0</span>점</div>
+            </div>
+
+            <div class="leaderboard-container">
+                <h3>🏆 명예의 전당</h3>
+                <table id="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>순위</th>
+                            <th>별명</th>
+                            <th>학년</th>
+                            <th>점수</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body"></tbody>
+                </table>
+            </div>
+
+            <button id="restart-btn" class="primary-btn">다시 하기</button>
+        </div>
+
+        <div class="version-badge">Ver 2.6</div>
     </div>
+
+    <!-- 전체 화면 피드백 오버레이 -->
+    <div id="feedback-overlay" class="hidden">
+        <div id="fb-icon" class="feedback-bubble">🎉</div>
+        <div id="fb-text" class="feedback-msg">정답이에요!</div>
+        <div id="fb-answer" class="ans-hint hidden">정답: 100</div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>

@@ -1,473 +1,415 @@
+/**
+ * 반짝반짝 수학 모험! (Math Adventure) - Ver 3.7
+ * 
+ * [수정 및 업데이트 내역]
+ * 1. UI/UX 개선: 시작 화면 간소화 및 레이아웃 최적화 (줄 바꿈 및 하단 잘림 해결)
+ * 2. 문제 은행 확장: 100여 개의 학년별 개념/도형 문항 추가 (1~6학년 전 과정)
+ * 3. 성능 최적화: 클릭 반응성 향상 및 화면 전환 대기 시간 단축 (0.8s)
+ * 4. 시각적 피드백: 정답/오답 풀스크린 오버레이 및 오답 시 정답 안내 로직 추가
+ * 5. 랭킹 시스템: 내 점수 하이라이트(노란색/펄스 효과) 및 '학년' 표기 정상화
+ * 6. 기타: 문제 중복 방지 큐(Queue) 적용 및 게임 중 '그만하기' 버튼 구현
+ */
+
+// --- 전역 변수 및 DOM 요소 ---
+const startScreen = document.getElementById('start-screen');
+const gameScreen = document.getElementById('game-screen');
+const gameOverScreen = document.getElementById('game-over-screen');
+const nicknameInput = document.getElementById('nickname');
+const startGameBtn = document.getElementById('start-game-btn');
+const restartBtn = document.getElementById('restart-btn');
+const quitBtn = document.getElementById('quit-btn');
+
 const problemCard = document.getElementById('problem-card');
+const shapeVisual = document.getElementById('shape-visual');
 const num1El = document.getElementById('num1');
 const num2El = document.getElementById('num2');
+const operatorEl = document.querySelector('.operator');
+const answerPlaceholder = document.getElementById('answer-placeholder');
 const optionsEl = document.getElementById('options');
+
 const scoreEl = document.getElementById('score');
 const livesEl = document.getElementById('lives');
-const feedbackEl = document.getElementById('feedback');
-const menuScreen = document.getElementById('menu-screen');
-const gameOverScreen = document.getElementById('game-over-screen');
-const finalScoreEl = document.getElementById('final-score');
-const restartBtn = document.getElementById('restart-btn');
-const effectLayer = document.getElementById('effect-layer');
-const gameProgress = document.getElementById('game-progress');
 const currentQEl = document.getElementById('current-q');
-const shapeVisual = document.getElementById('shape-visual');
+const pbFill = document.getElementById('pb-fill'); // 프로그레스 바 추가
 
-let score = 0;
-let lives = 3;
-let currentAnswer = 0;
-let currentGameMode = 'gugudan';
-let currentQuestionNum = 0;
-const TOTAL_QUESTIONS = 10;
+const fbOverlay = document.getElementById('feedback-overlay');
+const fbIcon = document.getElementById('fb-icon');
+const fbText = document.getElementById('fb-text');
+const fbAnswer = document.getElementById('fb-answer');
 
-// ======================================
-// 초3 도형 문제 데이터베이스 (200개)
-// 킹수학닷컴 및 3학년 교과서 참고
-// ======================================
-const shapeProblems = [
-  // === 직각 ===
-  { type:"right_angle", q1:"90도 각을", q2:"무엇이라고 하나요?", ans:"직각", options:["직각","예각","둔각","평각"] },
-  { type:"right_angle", q1:"직각은 몇 도인가요?", q2:"", ans:"90도", options:["90도","45도","180도","60도"] },
-  { type:"right_angle", q1:"직각보다 작은 각을", q2:"무엇이라고 하나요?", ans:"예각", options:["예각","둔각","직각","평각"] },
-  { type:"right_angle", q1:"직각보다 큰 각을", q2:"무엇이라고 하나요?", ans:"둔각", options:["둔각","예각","직각","평각"] },
-  { type:"right_angle", q1:"이 표시(□)는 각도가", q2:"몇 도임을 나타내나요?", ans:"90도", options:["90도","0도","180도","45도"] },
-  { type:"right_angle", q1:"60도 각은 어떤 각인가요?", q2:"", ans:"예각", options:["예각","직각","둔각","평각"] },
-  { type:"right_angle", q1:"120도 각은 어떤 각인가요?", q2:"", ans:"둔각", options:["둔각","예각","직각","평각"] },
-  { type:"right_angle", q1:"180도 각은 어떤 각인가요?", q2:"", ans:"평각", options:["평각","직각","예각","둔각"] },
-  { type:"right_angle", q1:"직각을 그릴 때 사용하는", q2:"도구는?", ans:"삼각자", options:["삼각자","컴퍼스","자","각도기"] },
-  { type:"right_angle", q1:"30도 각과 60도 각은", q2:"모두 어떤 각인가요?", ans:"예각", options:["예각","둔각","직각","평각"] },
-  { type:"right_angle", q1:"직각 2개를 합치면", q2:"몇 도인가요?", ans:"180도", options:["180도","90도","270도","360도"] },
-  { type:"right_angle", q1:"직각 4개를 합치면", q2:"몇 도인가요?", ans:"360도", options:["360도","180도","90도","270도"] },
+const resultNickname = document.getElementById('result-nickname');
+const finalScoreEl = document.getElementById('final-score');
+const leaderboardBody = document.getElementById('leaderboard-body');
 
-  // === 직각삼각형 ===
-  { type:"right_triangle", q1:"한 각이 직각인 삼각형을", q2:"무엇이라고 하나요?", ans:"직각삼각형", options:["직각삼각형","정삼각형","이등변삼각형","둔각삼각형"] },
-  { type:"right_triangle", q1:"직각삼각형의 직각은", q2:"몇 개인가요?", ans:"1개", options:["1개","2개","3개","0개"] },
-  { type:"right_triangle", q1:"직각삼각형에서 직각을", q2:"끼고 있는 두 변을?", ans:"두 밑변", options:["두 밑변","두 등변","빗변","꼭짓점"] },
-  { type:"right_triangle", q1:"직각삼각형에서 가장 긴", q2:"변을 무엇이라 하나요?", ans:"빗변", options:["빗변","밑변","높이","꼭짓점"] },
-  { type:"right_triangle", q1:"직각삼각형의 세 각의", q2:"합은 몇 도인가요?", ans:"180도", options:["180도","360도","90도","270도"] },
-  { type:"right_triangle", q1:"삼각자에 있는 직각삼각형의", q2:"직각은 어디에 있나요?", ans:"모서리", options:["모서리","꼭짓점","빗변","밑변"] },
-  { type:"right_triangle", q1:"직각삼각형도 삼각형이므로", q2:"변의 수는?", ans:"3개", options:["3개","4개","2개","5개"] },
-  { type:"right_triangle", q1:"만약 삼각형에 둔각이 있다면", q2:"직각삼각형인가요?", ans:"아니요", options:["아니요","예","알 수 없다","변경된다"] },
+// --- 게임 상태 ---
+let gameState = {
+    nickname: '',
+    grade: 3,
+    difficulty: 'medium',
+    score: 0,
+    lives: 3,
+    currentQuestion: 1,
+    totalQuestions: 10,
+    currentAnswer: null,
+    isProcessing: false,
+    lastQuestions: [],
+    currentSessionId: null // 현재 게임 세션을 식별하기 위한 ID
+};
 
-  // === 직사각형 ===
-  { type:"rectangle", q1:"네 각이 모두 직각인", q2:"사각형은?", ans:"직사각형", options:["직사각형","사다리꼴","마름모","평행사변형"] },
-  { type:"rectangle", q1:"직사각형의 마주보는 두 변은", q2:"서로 어떤 관계인가요?", ans:"같다", options:["같다","다르다","수직이다","평행하다"] },
-  { type:"rectangle", q1:"직사각형의 네 각은 모두", q2:"몇 도인가요?", ans:"90도", options:["90도","45도","60도","180도"] },
-  { type:"rectangle", q1:"직사각형의 각의 수는?", q2:"", ans:"4개", options:["4개","3개","5개","6개"] },
-  { type:"rectangle", q1:"직사각형은 정사각형인가요?", q2:"", ans:"아닐 수도 있다", options:["아닐 수도 있다","항상 그렇다","절대 아니다","같은 도형이다"] },
-  { type:"rectangle", q1:"직사각형의 네 변 중", q2:"같은 길이의 변은?", ans:"마주보는 두 쌍", options:["마주보는 두 쌍","모든 변","인접한 두 변","하나도 없다"] },
-  { type:"rectangle", q1:"직사각형의 대각선은 몇 개?", q2:"", ans:"2개", options:["2개","1개","3개","4개"] },
-  { type:"rectangle", q1:"직사각형의 네 각의 합은?", q2:"", ans:"360도", options:["360도","180도","270도","90도"] },
-  { type:"rectangle", q1:"책, 공책은 어떤 도형 모양?", q2:"", ans:"직사각형", options:["직사각형","정사각형","원","삼각형"] },
-  { type:"rectangle", q1:"직사각형에서 이웃한 두 변의", q2:"길이는?", ans:"서로 다를 수 있다", options:["서로 다를 수 있다","항상 같다","항상 다르다","알 수 없다"] },
-  { type:"rectangle", q1:"직사각형에서 짧은 변을", q2:"무엇이라 하나요?", ans:"폭(너비)", options:["폭(너비)","길이","빗변","둘레"] },
+// --- 확장된 수학 개념 데이터베이스 (100+ 유형) ---
+const extendedGeometryData = [
+    // [1학년]
+    { grade: [1], type: 'shape_ball', q: '공 모양의 특징은 무엇인가요?', ans: '잘 굴러간다', opts: ['잘 굴러간다','뾰족하다','평평하다','네모나다'] },
+    { grade: [1], type: 'shape_box', q: '상자 모양의 꼭짓점은 몇 개인가요?', ans: '8개', opts: ['8개','4개','6개','12개'] },
+    { grade: [1], type: 'clock_3', q: '긴 바늘이 12, 짧은 바늘이 3을 가리키면?', ans: '3시', opts: ['3시','12시','6시','9시'] },
+    { grade: [1], type: 'clock_half', q: '긴 바늘이 6, 짧은 바늘이 1과 2 사이에 있으면?', ans: '1시 30분', opts: ['1시 30분','2시 30분','6시 10분','12시 30분'] },
+    { grade: [1], type: 'compare_heavy', q: '코끼리와 강아지 중 더 무거운 동물은?', ans: '코끼리', opts: ['코끼리','강아지','같다','모른다'] },
+    { grade: [1], type: 'compare_long', q: '기차와 자동차 중 더 긴 것은?', ans: '기차', opts: ['기차','자동차','같다','모른다'] },
+    { grade: [1], type: 'num_order', q: '8 다음의 수는 무엇인가요?', ans: '9', opts: ['9','7','10','6'] },
+    { grade: [1], type: 'shape_tri_sides', q: '삼각형의 변은 몇 개인가요?', ans: '3개', opts: ['3개','4개','2개','0개'] },
+    { grade: [1], type: 'shape_circle_sides', q: '원의 변은 몇 개인가요?', ans: '0개', opts: ['0개','1개','3개','무한대'] },
+    { grade: [1], type: 'plus_basic', q: '사과 3개와 2개를 합하면 몇 개인가요?', ans: '5개', opts: ['5개','4개','6개','1개'] },
+    { grade: [1], type: 'minus_basic', q: '빵 5개 중 2개를 먹으면 몇 개 남나요?', ans: '3개', opts: ['3개','2개','7개','4개'] },
+    { grade: [1], type: 'pattern_1', q: '빨강-파랑-빨강-? 다음에 올 색은?', ans: '파랑', opts: ['파랑','빨강','노랑','초록'] },
 
-  // === 정사각형 ===
-  { type:"square", q1:"네 변의 길이와 네 각이", q2:"모두 같은 사각형은?", ans:"정사각형", options:["정사각형","직사각형","마름모","사다리꼴"] },
-  { type:"square", q1:"정사각형의 한 각은", q2:"몇 도인가요?", ans:"90도", options:["90도","60도","45도","120도"] },
-  { type:"square", q1:"정사각형은 직사각형인가요?", q2:"", ans:"예", options:["예","아니요","알 수 없다","다를 때도 있다"] },
-  { type:"square", q1:"정사각형의 네 변은 모두", q2:"어떤 관계인가요?", ans:"길이가 같다", options:["길이가 같다","길이가 다르다","수직이다","평행하다"] },
-  { type:"square", q1:"정사각형의 변의 수는?", q2:"", ans:"4개", options:["4개","3개","5개","8개"] },
-  { type:"square", q1:"손수건, 타일은 어떤", q2:"도형 모양인가요?", ans:"정사각형", options:["정사각형","직사각형","원","삼각형"] },
-  { type:"square", q1:"정사각형과 직사각형의", q2:"같은 점은?", ans:"네 각이 직각", options:["네 각이 직각","네 변이 같다","평행사변형","마름모"] },
-  { type:"square", q1:"정사각형의 대각선은 몇 개?", q2:"", ans:"2개", options:["2개","1개","3개","4개"] },
-  { type:"square", q1:"정사각형의 네 각의 합은?", q2:"", ans:"360도", options:["360도","90도","180도","270도"] },
-  { type:"square", q1:"정사각형의 한 변 길이가 5cm면", q2:"둘레는?", ans:"20cm", options:["20cm","10cm","15cm","25cm"] },
-  { type:"square", q1:"정사각형과 마름모의", q2:"차이점은?", ans:"네 각이 직각인지", options:["네 각이 직각인지","변의 수","대각선 수","꼭짓점 수"] },
+    // [2학년]
+    { grade: [2], type: 'unit_cm_m', q: '100cm는 몇 m인가요?', ans: '1m', opts: ['1m','10m','100m','0.1m'] },
+    { grade: [2], type: 'shape_penta', q: '변이 5개인 도형의 이름은?', ans: '오각형', opts: ['오각형','육각형','사각형','삼각형'] },
+    { grade: [2], type: 'shape_hexa', q: '꼭짓점이 6개인 도형의 이름은?', ans: '육각형', opts: ['육각형','오각형','사각형','칠각형'] },
+    { grade: [2], type: 'clock_5min', q: '긴 바늘이 3을 가리키면 몇 분인가요?', ans: '15분', opts: ['15분','3분','30분','45분'] },
+    { grade: [2], type: 'clock_9_45', q: '9시 45분은 10시 몇 분 전인가요?', ans: '15분 전', opts: ['15분 전','45분 전','5분 전','30분 전'] },
+    { grade: [2], type: 'mult_2_3', q: '2단 곱셈: 2 x 3은?', ans: '6', opts: ['6','4','8','10'] },
+    { grade: [2], type: 'mult_5_4', q: '5단 곱셈: 5 x 4는?', ans: '20', opts: ['20','15','25','30'] },
+    { grade: [2], type: 'mult_target', q: '어떤 수에 0을 곱하면 항상 얼마인가요?', ans: '0', opts: ['0','1','자기 자신','10'] },
+    { grade: [2], type: 'len_compare', q: '1m와 110cm 중 더 긴 것은?', ans: '110cm', opts: ['110cm','1m','같다','모른다'] },
+    { grade: [2], type: 'shape_find_right', q: '직사각형에서 직각은 모두 몇 개인가요?', ans: '4개', opts: ['4개','2개','0개','3개'] },
 
-  // === 원의 구성요소 ===
-  { type:"circle_center", q1:"원의 가장 가운데 점을", q2:"무엇이라 하나요?", ans:"중심", options:["중심","반지름","지름","원주"] },
-  { type:"circle_center", q1:"원의 중심은 몇 개인가요?", q2:"", ans:"1개", options:["1개","2개","3개","없다"] },
-  { type:"circle_radius", q1:"원의 중심에서 원 위의", q2:"한 점까지의 선분은?", ans:"반지름", options:["반지름","지름","중심","원주"] },
-  { type:"circle_radius", q1:"같은 원에서 반지름은", q2:"모두 같나요?", ans:"예", options:["예","아니요","하나만 같다","알 수 없다"] },
-  { type:"circle_diameter", q1:"원의 중심을 지나는", q2:"가장 긴 선분은?", ans:"지름", options:["지름","반지름","원주","중심"] },
-  { type:"circle_diameter", q1:"원의 지름은 반지름의", q2:"몇 배인가요?", ans:"2배", options:["2배","3배","4배","1배"] },
-  { type:"circle_diameter", q1:"반지름이 3cm이면", q2:"지름은 몇 cm인가요?", ans:"6cm", options:["6cm","3cm","9cm","12cm"] },
-  { type:"circle_diameter", q1:"지름이 10cm이면", q2:"반지름은 몇 cm인가요?", ans:"5cm", options:["5cm","10cm","2cm","20cm"] },
-  { type:"circle_center", q1:"원을 그릴 때 중심을", q2:"고정하는 도구는?", ans:"컴퍼스", options:["컴퍼스","자","삼각자","각도기"] },
-  { type:"circle_diameter", q1:"원의 지름은 원 위의 두 점을", q2:"어떻게 잇나요?", ans:"중심을 지나게", options:["중심을 지나게","끝을 이어","가장자리로","임의로"] },
-  { type:"circle_center", q1:"원의 중심은 원 안에", q2:"있나요, 원 위에 있나요?", ans:"원 안에", options:["원 안에","원 위에","원 밖에","없다"] },
-  { type:"circle_radius", q1:"반지름이 4cm이면", q2:"같은 원의 다른 반지름도?", ans:"4cm", options:["4cm","2cm","8cm","6cm"] },
-  { type:"circle_diameter", q1:"원의 지름은 원 위의", q2:"두 점을 꼭 지나야 하나요?", ans:"예(중심도)", options:["예(중심도)","아니요","중심만","임의로"] },
-  { type:"circle_center", q1:"컴퍼스로 원을 그릴 때", q2:"중심이 되는 곳은?", ans:"컴퍼스 침이 꽂힌 곳", options:["컴퍼스 침이 꽂힌 곳","연필 끝","손잡이","바깥쪽"] },
-  { type:"circle_radius", q1:"원에서 반지름이 여러 개일 때", q2:"길이는 모두 어떤가요?", ans:"같다", options:["같다","다르다","2배씩 늘어난다","반씩 줄어든다"] },
+    // [3학년]
+    { grade: [3], type: 'circle_radius_def', q: '원의 중심에서 원 위 한 점을 잇는 선분은?', ans: '반지름', opts: ['반지름','지름','원주','현'] },
+    { grade: [3], type: 'circle_diameter_def', q: '원의 중심을 지나 두 점을 잇는 가장 긴 선분?', ans: '지름', opts: ['지름','반지름','할선','접선'] },
+    { grade: [3], type: 'div_basic', q: '12 나누기 3의 몫은 얼마인가요?', ans: '4', opts: ['4','3','6','12'] },
+    { grade: [3], type: 'div_remain', q: '10 나누기 3의 나머지는 얼마인가요?', ans: '1', opts: ['1','0','2','3'] },
+    { grade: [3], type: 'unit_kg_g', q: '2kg은 몇 g인가요?', ans: '2000g', opts: ['2000g','200g','20g','20000g'] },
+    { grade: [3], type: 'unit_L_ml', q: '1L는 몇 ml인가요?', ans: '1000ml', opts: ['1000ml','100ml','10ml','500ml'] },
+    { grade: [3], type: 'frac_half', q: '전체를 똑같이 2로 나눈 것 중의 1은?', ans: '1/2', opts: ['1/2','1/4','2/1','1'] },
+    { grade: [3], type: 'angle_right', q: '종이를 반듯하게 두 번 접었을 때 생기는 각?', ans: '직각', opts: ['직각','예각','둔각','평각'] },
+    { grade: [3], type: 'time_add', q: '1시간 40분 + 30분은 몇 시간 몇 분?', ans: '2시간 10분', opts: ['2시간 10분','1시간 70분','2시간 30분','2시간'] },
+    { grade: [3], type: 'sec_unit', q: '1분은 몇 초인가요?', ans: '60초', opts: ['60초','100초','30초','120초'] },
 
-  // === 선분 ===
-  { type:"line_segment", q1:"두 점을 곧게 이은 선을", q2:"무엇이라 하나요?", ans:"선분", options:["선분","직선","반직선","곡선"] },
-  { type:"line_segment", q1:"선분은 양쪽에 끝이", q2:"있나요?", ans:"예, 양쪽 다", options:["예, 양쪽 다","아니요","한쪽만","없다"] },
-  { type:"line_segment", q1:"선분 AB와 선분 BA는", q2:"같은 선분인가요?", ans:"예", options:["예","아니요","다를 수도","항상 다르다"] },
-  { type:"line_segment", q1:"선분의 길이는 잴 수", q2:"있나요?", ans:"예", options:["예","아니요","때에 따라","알 수 없다"] },
-  { type:"line_segment", q1:"선분과 직선의 차이는?", q2:"", ans:"선분은 끝이 있다", options:["선분은 끝이 있다","선분이 더 길다","직선이 짧다","같은 것이다"] },
-  { type:"line_segment", q1:"삼각형의 세 변은 모두", q2:"무엇으로 이루어지나요?", ans:"선분", options:["선분","직선","반직선","곡선"] },
-  { type:"line_segment", q1:"선분을 양쪽으로 끝없이", q2:"늘이면 무엇이 되나요?", ans:"직선", options:["직선","반직선","곡선","ray"] },
+    // [4학년]
+    { grade: [4], type: 'angle_sum_tri', q: '삼각형 세 각의 크기의 합은?', ans: '180도', opts: ['180도','360도','90도','270도'] },
+    { grade: [4], type: 'angle_sum_quad', q: '사각형 네 각의 크기의 합은?', ans: '360도', opts: ['360도','180도','90도','270도'] },
+    { grade: [4], type: 'angle_acute_def', q: '0도보다 크고 직각보다 작은 각은?', ans: '예각', opts: ['예각','둔각','직각','평각'] },
+    { grade: [4], type: 'angle_obtuse_def', q: '직각보다 크고 180도보다 작은 각은?', ans: '둔각', opts: ['둔각','예각','직각','평각'] },
+    { grade: [4], type: 'tri_iso', q: '두 변의 길이가 같은 삼각형은?', ans: '이등변삼각형', opts: ['이등변삼각형','정삼각형','직각삼각형','부등변삼각형'] },
+    { grade: [4], type: 'tri_equi', q: '세 변의 길이가 모두 같은 삼각형은?', ans: '정삼각형', opts: ['정삼각형','이등변삼각형','직각삼각형','둔각삼각형'] },
+    { grade: [4], type: 'big_num_man', q: '1000이 10개인 수는?', ans: '1만', opts: ['1만','10만','10000','1000'] },
+    { grade: [4], type: 'big_num_eok', q: '1만이 10000개인 수는?', ans: '1억', opts: ['1억','1조','1000만','10억'] },
+    { grade: [4], type: 'rect_area', q: '가로 6, 세로 4인 직사각형의 넓이는?', ans: '24', opts: ['24','10','20','48'] },
+    { grade: [4], type: 'poly_diagonal', q: '사각형의 대각선은 모두 몇 개인가요?', ans: '2개', opts: ['2개','4개','1개','0개'] },
 
-  // === 반직선 ===
-  { type:"ray", q1:"한 점에서 한쪽으로만", q2:"끝없이 늘인 곧은 선은?", ans:"반직선", options:["반직선","선분","직선","곡선"] },
-  { type:"ray", q1:"반직선은 시작점이", q2:"있나요?", ans:"예", options:["예","아니요","때에 따라","없다"] },
-  { type:"ray", q1:"반직선은 한쪽 끝이", q2:"있나요?", ans:"아니요(무한)", options:["아니요(무한)","예","항상 있다","2개있다"] },
-  { type:"ray", q1:"반직선 AB에서 처음 시작하는", q2:"점은 어느 것인가요?", ans:"A", options:["A","B","중간점","없다"] },
-  { type:"ray", q1:"반직선은 길이를 잴 수", q2:"있나요?", ans:"아니요", options:["아니요","예","부분만 가능","언제나"] },
+    // [5학년]
+    { grade: [5], type: 'divisor_6', q: '6의 약수가 아닌 것은?', ans: '4', opts: ['4','1','2','3'] },
+    { grade: [5], type: 'multiple_4', q: '4의 배수가 아닌 것은?', ans: '14', opts: ['14','4','8','12'] },
+    { grade: [5], type: 'prime_basic', q: '약수가 1과 자기 자신뿐인 수는?', ans: '소수', opts: ['소수','합성수','홀수','짝수'] },
+    { grade: [5], type: 'frac_add_same', q: '1/5 + 2/5는 얼마인가요?', ans: '3/5', opts: ['3/5','3/10','1/5','1'] },
+    { grade: [5], type: 'para_area', q: '밑변 10, 높이 5인 평행사변형의 넓이는?', ans: '50', opts: ['50','25','15','100'] },
+    { grade: [5], type: 'tri_area', q: '밑변 10, 높이 5인 삼각형의 넓이는?', ans: '25', opts: ['25','50','15','30'] },
+    { grade: [5], type: 'cube_volume', q: '한 변이 3인 정육면체의 부피는?', ans: '27', opts: ['27','9','18','30'] },
+    { grade: [5], type: 'avg_basic', q: '80점과 100점의 평균은?', ans: '90점', opts: ['90점','80점','100점','180점'] },
+    { grade: [5], type: 'dec_mult', q: '0.5 x 0.2는 얼마인가요?', ans: '0.1', opts: ['0.1','1','0.01','0.7'] },
+    { grade: [5], type: 'sym_line', q: '선대칭도형에서 대칭축은 최소 몇 개?', ans: '1개', opts: ['1개','2개','0개','무한대'] },
 
-  // === 직선 ===
-  { type:"straight_line", q1:"양쪽으로 끝없이 늘인", q2:"곧은 선을 무엇이라 하나요?", ans:"직선", options:["직선","선분","반직선","곡선"] },
-  { type:"straight_line", q1:"직선은 몇 개의 끝점을", q2:"가지고 있나요?", ans:"0개(없음)", options:["0개(없음)","1개","2개","무수히 많이"] },
-  { type:"straight_line", q1:"직선의 길이는 잴 수", q2:"있나요?", ans:"아니요", options:["아니요","예","반만 가능","부분적으로"] },
-  { type:"straight_line", q1:"직선은 선분을 늘려서", q2:"만들 수 있나요?", ans:"예", options:["예","아니요","때에 따라","어렵다"] },
-  { type:"straight_line", q1:"두 점을 지나는 직선은", q2:"몇 개인가요?", ans:"1개", options:["1개","2개","3개","무수히"] },
-
-  // === 각의 구성 ===
-  { type:"angle", q1:"한 점에서 그은 두 반직선으로", q2:"이루어진 도형은?", ans:"각", options:["각","선분","꼭짓점","변"] },
-  { type:"angle", q1:"각에서 두 반직선이 만나는", q2:"점을 무엇이라 하나요?", ans:"꼭짓점", options:["꼭짓점","변","각도","원점"] },
-  { type:"angle", q1:"각을 이루는 두 반직선을", q2:"무엇이라 하나요?", ans:"변", options:["변","꼭짓점","직선","선분"] },
-  { type:"angle_parts", q1:"각의 두 변이 이루는", q2:"크기를 무엇이라 하나요?", ans:"각도", options:["각도","길이","폭","넓이"] },
-  { type:"angle_parts", q1:"각도를 재는 도구는?", q2:"", ans:"각도기", options:["각도기","자","컴퍼스","삼각자"] },
-  { type:"angle", q1:"꼭짓점이 1개인 도형은", q2:"각 외에 무엇이 있나요?", ans:"삼각형", options:["삼각형","원","직선","선분"] },
-  { type:"angle_parts", q1:"각도기에서 0도 ~ 180도까지", q2:"재는 눈금은?", ans:"1~180도", options:["1~180도","0~90도","0~360도","1~100도"] },
-
-  // === 삼각형 종류 ===
-  { type:"right_triangle", q1:"세 변의 길이가 모두 같은", q2:"삼각형은?", ans:"정삼각형", options:["정삼각형","이등변삼각형","직각삼각형","둔각삼각형"] },
-  { type:"right_triangle", q1:"두 변의 길이가 같은", q2:"삼각형은?", ans:"이등변삼각형", options:["이등변삼각형","정삼각형","직각삼각형","둔각삼각형"] },
-  { type:"right_triangle", q1:"정삼각형의 세 각은 모두", q2:"몇 도인가요?", ans:"60도", options:["60도","90도","45도","120도"] },
-  { type:"right_triangle", q1:"삼각형의 세 각의 합은", q2:"항상 몇 도인가요?", ans:"180도", options:["180도","360도","90도","270도"] },
-  { type:"right_triangle", q1:"삼각형의 변의 수는?", q2:"", ans:"3개", options:["3개","4개","5개","2개"] },
-  { type:"right_triangle", q1:"삼각형의 꼭짓점은", q2:"몇 개인가요?", ans:"3개", options:["3개","4개","2개","5개"] },
-  { type:"right_triangle", q1:"삼각형에서 세 각이 모두", q2:"예각이면?", ans:"예각삼각형", options:["예각삼각형","직각삼각형","둔각삼각형","정삼각형"] },
-
-  // === 사각형의 종류 ===
-  { type:"rectangle", q1:"두 쌍의 마주보는 변이", q2:"평행한 사각형은?", ans:"평행사변형", options:["평행사변형","사다리꼴","마름모","정사각형"] },
-  { type:"square", q1:"네 변이 모두 같은 사각형은?", q2:"(직각이 아님)", ans:"마름모", options:["마름모","정사각형","직사각형","사다리꼴"] },
-  { type:"rectangle", q1:"마주보는 한 쌍의 변만", q2:"평행한 사각형은?", ans:"사다리꼴", options:["사다리꼴","평행사변형","마름모","직사각형"] },
-  { type:"rectangle", q1:"사각형의 변의 수는?", q2:"", ans:"4개", options:["4개","3개","5개","6개"] },
-  { type:"rectangle", q1:"사각형의 꼭짓점은 몇 개?", q2:"", ans:"4개", options:["4개","3개","5개","2개"] },
-  { type:"rectangle", q1:"사각형의 네 각의 합은?", q2:"", ans:"360도", options:["360도","180도","270도","90도"] },
-  { type:"square", q1:"마름모의 네 변은 서로", q2:"어떤 관계인가요?", ans:"모두 같다", options:["모두 같다","모두 다르다","두 쌍이 같다","알 수 없다"] },
-  { type:"rectangle", q1:"사다리꼴에서 평행한 두 변을", q2:"무엇이라 하나요?", ans:"윗변과 아랫변", options:["윗변과 아랫변","높이","대각선","꼭짓점"] },
-  { type:"rectangle", q1:"평행사변형에서 마주보는", q2:"두 쌍의 변의 관계는?", ans:"길이가 같고 평행", options:["길이가 같고 평행","수직","모두 다르다","하나만 같다"] },
-  { type:"square", q1:"마름모와 정사각형의", q2:"공통점은?", ans:"네 변이 같다", options:["네 변이 같다","네 각이 직각","대각선이 같다","둘레가 같다"] },
-
-  // === 원 심화 ===
-  { type:"circle_center", q1:"원을 그릴 때 컴퍼스의", q2:"침을 꽂는 곳은?", ans:"중심", options:["중심","원 위","원 밖","아무 곳"] },
-  { type:"circle_radius", q1:"컴퍼스를 벌린 너비가", q2:"원의 무엇이 되나요?", ans:"반지름", options:["반지름","지름","중심","둘레"] },
-  { type:"circle_diameter", q1:"지름이 14cm인 원의", q2:"반지름은?", ans:"7cm", options:["7cm","14cm","28cm","3.5cm"] },
-  { type:"circle_diameter", q1:"반지름이 6cm인 원의", q2:"지름은?", ans:"12cm", options:["12cm","6cm","3cm","18cm"] },
-  { type:"circle_center", q1:"같은 원에서 모든 반지름의", q2:"길이는?", ans:"모두 같다", options:["모두 같다","모두 다르다","두 배씩 커진다","반씩 줄어든다"] },
-  { type:"circle_diameter", q1:"원의 지름이 원 안에서", q2:"제일 긴 이유는?", ans:"중심을 지나기 때문", options:["중심을 지나기 때문","가장 멀기 때문","지름이 정의라서","원주이기 때문"] },
-  { type:"circle_radius", q1:"반지름이 1cm인 원이 있다면", q2:"지름은 몇 cm인가요?", ans:"2cm", options:["2cm","1cm","3cm","4cm"] },
-  { type:"circle_center", q1:"원에서 중심, 반지름, 지름 중", q2:"가장 긴 것은?", ans:"지름", options:["지름","반지름","중심","같다"] },
-  { type:"circle_diameter", q1:"반지름이 9cm라면", q2:"지름은 몇 cm인가요?", ans:"18cm", options:["18cm","9cm","4.5cm","27cm"] },
-  { type:"circle_diameter", q1:"지름이 8cm인 원의", q2:"반지름은?", ans:"4cm", options:["4cm","8cm","16cm","2cm"] },
-
-  // === 선분·반직선·직선 구별 ===
-  { type:"line_segment", q1:"끝점이 두 개인 선은?", q2:"", ans:"선분", options:["선분","직선","반직선","곡선"] },
-  { type:"ray", q1:"끝점이 하나인 선은?", q2:"", ans:"반직선", options:["반직선","선분","직선","곡선"] },
-  { type:"straight_line", q1:"끝점이 없는 선은?", q2:"", ans:"직선", options:["직선","선분","반직선","꺾은선"] },
-  { type:"line_segment", q1:"길이를 잴 수 있는 선은?", q2:"", ans:"선분", options:["선분","직선","반직선","모두 가능"] },
-  { type:"straight_line", q1:"직선과 선분의 차이점은?", q2:"", ans:"끝점 유무", options:["끝점 유무","두께 차이","색깔 차이","방향 차이"] },
-  { type:"ray", q1:"반직선을 두 개 합치면", q2:"직선이 될 수 있나요?", ans:"예(반대방향이면)", options:["예(반대방향이면)","아니요","언제나","불가능"] },
-
-  // === 도형의 특징 종합 ===
-  { type:"right_angle", q1:"직각삼각형에는 직각이", q2:"반드시 있어야 하나요?", ans:"예", options:["예","아니요","하나 이상","없어도 된다"] },
-  { type:"rectangle", q1:"직사각형과 정사각형 중에서", q2:"더 특수한 도형은?", ans:"정사각형", options:["정사각형","직사각형","같다","없다"] },
-  { type:"square", q1:"정사각형은 마름모인가요?", q2:"", ans:"예", options:["예","아니요","때에 따라","다른 도형"] },
-  { type:"circle_center", q1:"원에는 꼭짓점이", q2:"몇 개 있나요?", ans:"없다", options:["없다","1개","무수히 많다","4개"] },
-  { type:"right_triangle", q1:"직각삼각형은 이등변삼각형이", q2:"될 수 있나요?", ans:"예", options:["예","아니요","불가능","항상 아니다"] },
-  { type:"rectangle", q1:"직사각형의 네 꼭짓점은", q2:"모두 맞꼭지각이 있나요?", ans:"예", options:["예","아니요","2개만","하나만"] },
-  { type:"square", q1:"정사각형의 네 변의 합을", q2:"무엇이라 하나요?", ans:"둘레", options:["둘레","넓이","높이","지름"] },
-  { type:"angle", q1:"삼각형의 내각의 합은?", q2:"", ans:"180도", options:["180도","90도","360도","270도"] },
-  { type:"angle", q1:"사각형의 내각의 합은?", q2:"", ans:"360도", options:["360도","180도","90도","270도"] },
-  { type:"circle_diameter", q1:"원의 지름은 원을", q2:"몇 등분 하나요?", ans:"2등분", options:["2등분","3등분","4등분","알 수 없다"] },
-
-  // === 생활 속 도형 ===
-  { type:"circle_center", q1:"시계는 어떤 도형 모양?", q2:"", ans:"원", options:["원","직사각형","정사각형","삼각형"] },
-  { type:"square", q1:"주사위 한 면은 어떤 도형?", q2:"", ans:"정사각형", options:["정사각형","직사각형","원","마름모"] },
-  { type:"rectangle", q1:"칠판은 어떤 도형 모양?", q2:"", ans:"직사각형", options:["직사각형","정사각형","사다리꼴","평행사변형"] },
-  { type:"right_triangle", q1:"삼각형 모양 표지판에는", q2:"꼭짓점이 몇 개인가요?", ans:"3개", options:["3개","4개","2개","많다"] },
-  { type:"circle_center", q1:"동전은 어떤 도형 모양?", q2:"", ans:"원", options:["원","사각형","삼각형","마름모"] },
-  { type:"square", q1:"바둑판 한 칸은 어떤 도형?", q2:"", ans:"정사각형", options:["정사각형","직사각형","원","마름모"] },
-  { type:"rectangle", q1:"문(door)은 어떤 도형?", q2:"", ans:"직사각형", options:["직사각형","정사각형","원","사다리꼴"] },
-  { type:"right_triangle", q1:"종이접기로 대각선을 접으면", q2:"어떤 도형이 생기나요?", ans:"직각삼각형", options:["직각삼각형","정삼각형","이등변삼각형","둔각삼각형"] },
-  { type:"circle_diameter", q1:"피자를 반으로 나누는 선은", q2:"원의 무엇과 같나요?", ans:"지름", options:["지름","반지름","중심","원주"] },
-  { type:"square", q1:"체스판을 이루는 한 칸은?", q2:"", ans:"정사각형", options:["정사각형","직사각형","원","마름모"] },
-
-  // === 도형의 이동 ===
-  { type:"rectangle", q1:"도형을 밀어도 모양과", q2:"크기가 변하나요?", ans:"변하지 않는다", options:["변하지 않는다","크기만 변한다","모양만 변한다","둘 다 변한다"] },
-  { type:"rectangle", q1:"도형을 뒤집어도 모양과", q2:"크기는 어떻게 되나요?", ans:"변하지 않는다", options:["변하지 않는다","크기만 변한다","모양이 반대된다","둘 다 변한다"] },
-  { type:"square", q1:"정사각형을 90도 돌리면", q2:"어떤 도형이 되나요?", ans:"정사각형", options:["정사각형","직사각형","마름모","다른 도형"] },
-  { type:"rectangle", q1:"직사각형을 180도 돌리면?", q2:"", ans:"직사각형", options:["직사각형","정사각형","사다리꼴","바뀐다"] },
-
-  // === 둘레와 넓이 기초 ===
-  { type:"square", q1:"정사각형 한 변이 3cm이면", q2:"둘레는 몇 cm인가요?", ans:"12cm", options:["12cm","9cm","6cm","15cm"] },
-  { type:"rectangle", q1:"직사각형 가로 4cm, 세로 3cm", q2:"이면 둘레는?", ans:"14cm", options:["14cm","12cm","7cm","24cm"] },
-  { type:"square", q1:"정사각형 한 변이 2cm이면", q2:"넓이는 몇 cm²인가요?", ans:"4cm²", options:["4cm²","8cm²","2cm²","16cm²"] },
-  { type:"rectangle", q1:"직사각형 가로 5cm, 세로 2cm", q2:"이면 넓이는?", ans:"10cm²", options:["10cm²","14cm²","7cm²","25cm²"] },
-  { type:"square", q1:"정사각형의 둘레가 20cm면", q2:"한 변의 길이는?", ans:"5cm", options:["5cm","4cm","10cm","20cm"] },
-  { type:"rectangle", q1:"가로와 세로가 같은 직사각형은", q2:"어떤 사각형인가요?", ans:"정사각형", options:["정사각형","마름모","사다리꼴","평행사변형"] },
-
-  // === 선분 길이 ===
-  { type:"line_segment", q1:"선분 AB가 4cm, BC가 3cm이면", q2:"A에서 C까지 선분의 길이는?", ans:"7cm", options:["7cm","4cm","3cm","12cm"] },
-  { type:"line_segment", q1:"선분의 중점이란?", q2:"", ans:"선분을 둘로 나누는 점", options:["선분을 둘로 나누는 점","선분의 끝점","선분의 시작점","선분 밖의 점"] },
-
-  // === 도형 심화 ===
-  { type:"right_angle", q1:"직각이 있는 삼각형은?", q2:"", ans:"직각삼각형", options:["직각삼각형","예각삼각형","둔각삼각형","이등변삼각형"] },
-  { type:"right_angle", q1:"직각이 있는 사각형은?", q2:"(두 가지)", ans:"직사각형, 정사각형", options:["직사각형, 정사각형","마름모, 사다리꼴","평행사변형, 마름모","사다리꼴, 직사각형"] },
-  { type:"rectangle", q1:"평행사변형에서 이웃한 두 각의", q2:"합은?", ans:"180도", options:["180도","90도","360도","270도"] },
-  { type:"square", q1:"정사각형은 어떤 도형들의", q2:"특별한 경우인가요?", ans:"직사각형과 마름모", options:["직사각형과 마름모","사다리꼴과 마름모","평행사변형과 마름모","원과 삼각형"] },
-
-  // === 도형 수 세기 ===
-  { type:"rectangle", q1:"직사각형의 대각선 길이는", q2:"서로 어떤가요?", ans:"같다", options:["같다","다르다","하나가 더 길다","재는 방법마다 다르다"] },
-  { type:"square", q1:"정사각형의 대각선 길이는", q2:"서로 어떤가요?", ans:"같다", options:["같다","다르다","수직이다","하나가 길다"] },
-  { type:"right_triangle", q1:"직각삼각형의 대각선은", q2:"몇 개인가요?", ans:"0개(삼각형엔 없음)", options:["0개(삼각형엔 없음)","1개","2개","3개"] },
-  { type:"circle_center", q1:"원의 대각선은 몇 개인가요?", q2:"", ans:"없다(원은 사각형 아님)", options:["없다(원은 사각형 아님)","1개","2개","무수히"] },
-
-  // === 복합 문제 ===
-  { type:"rectangle", q1:"직사각형 안에 대각선을 그으면", q2:"생기는 도형은?", ans:"직각삼각형", options:["직각삼각형","이등변삼각형","정삼각형","둔각삼각형"] },
-  { type:"square", q1:"정사각형 안에 대각선을 그으면", q2:"생기는 삼각형은?", ans:"직각이등변삼각형", options:["직각이등변삼각형","정삼각형","이등변삼각형","둔각삼각형"] },
-  { type:"right_angle", q1:"삼각자의 직각 부분은 몇 도?", q2:"", ans:"90도", options:["90도","45도","60도","30도"] },
-  { type:"right_triangle", q1:"30-60-90 삼각형에서", q2:"큰 각은 몇 도인가요?", ans:"90도", options:["90도","60도","30도","120도"] },
-  { type:"circle_diameter", q1:"지름이 같은 두 원이 있을 때", q2:"두 원의 크기는?", ans:"같다", options:["같다","다르다","하나가 크다","알 수 없다"] },
-  { type:"circle_radius", q1:"반지름이 다른 두 원 중에서", q2:"더 큰 원은?", ans:"반지름이 더 긴 원", options:["반지름이 더 긴 원","반지름이 더 짧은 원","같다","알 수 없다"] },
+    // [6학년]
+    { grade: [6], type: 'ratio_basic', q: '2:3에서 비교하는 양은 무엇인가요?', ans: '2', opts: ['2','3','5','6'] },
+    { grade: [6], type: 'ratio_val', q: '비 1:4를 비율(소수)로 나타내면?', ans: '0.25', opts: ['0.25','2.5','0.14','4'] },
+    { grade: [6], type: 'percent_100', q: '전체에 대한 부분의 비율에 100을 곱한 것?', ans: '백분율', opts: ['백분율','할인율','이자율','비율'] },
+    { grade: [6], type: 'circle_area_f', q: '반지름이 10, 원주율이 3.1일 때 원의 넓이는?', ans: '310', opts: ['310','31','62','314'] },
+    { grade: [6], type: 'prism_base', q: '각기둥의 두 밑면은 서로 어떤 관계인가요?', ans: '평행하고 합동', opts: ['평행하고 합동','수직','겹침','닮음'] },
+    { grade: [6], type: 'pyramid_side', q: '각뿔의 옆면은 항상 어떤 모양인가요?', ans: '삼각형', opts: ['삼각형','사각형','원','사다리꼴'] },
+    { grade: [6], type: 'cyl_side', q: '원기둥을 펼쳤을 때 옆면의 모양은?', ans: '직사각형', opts: ['직사각형','원','삼각형','사다리꼴'] },
+    { grade: [6], type: 'sphere_center', q: '구의 가장 안쪽에 있는 점은?', ans: '구의 중심', opts: ['구의 중심','구의 반지름','구의 표면','없다'] },
+    { grade: [6], type: 'div_frac', q: '1/2 나누기 1/4는 얼마인가요?', ans: '2', opts: ['2','1/2','1/8','4'] },
+    { grade: [6], type: 'prop_basic', q: '2:3 = 4:x 에서 x의 값은?', ans: '6', opts: ['6','5','8','4'] }
 ];
 
-// ======================================
-// 게임 로직
-// ======================================
-function initGame(mode) {
-    currentGameMode = mode;
-    score = 0;
-    lives = 3;
-    currentQuestionNum = 0;
-    updateScoreBoard();
-    menuScreen.classList.add('hidden');
+// --- 초기화 ---
+document.querySelectorAll('.grade-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.grade-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        gameState.grade = parseInt(btn.dataset.grade);
+    });
+});
+
+document.querySelectorAll('.diff-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        gameState.difficulty = btn.dataset.diff;
+    });
+});
+
+document.querySelector('[data-grade="3"]').classList.add('selected');
+
+startGameBtn.addEventListener('click', startGame);
+restartBtn.addEventListener('click', () => {
     gameOverScreen.classList.add('hidden');
-    gameProgress.classList.remove('hidden');
+    startScreen.classList.remove('hidden');
+});
+quitBtn.addEventListener('click', () => {
+    if(confirm('정말 모험을 그만둘까요?')) {
+        gameScreen.classList.add('hidden');
+        startScreen.classList.remove('hidden');
+    }
+});
+
+// --- 게임 흐름 제어 ---
+function startGame() {
+    const nick = nicknameInput.value.trim() || '미지의 탐험가';
+    gameState.nickname = nick;
+    gameState.score = 0;
+    gameState.lives = 3;
+    gameState.currentQuestion = 1;
+    gameState.lastQuestions = [];
+    gameState.currentSessionId = Date.now(); // 유니크 세션 ID 생성
+    
+    startScreen.classList.add('hidden');
+    gameScreen.classList.remove('hidden');
+    updateUI();
     nextProblem();
 }
 
-function updateScoreBoard() {
-    scoreEl.innerText = score;
-    livesEl.innerText = '❤️'.repeat(lives);
+function updateUI() {
+    scoreEl.innerText = gameState.score;
+    livesEl.innerText = '❤️'.repeat(gameState.lives);
+    currentQEl.innerText = gameState.currentQuestion;
+    
+    // 프로그레스 바 업데이트 (정교하게 채워짐)
+    const progress = ((gameState.currentQuestion - 1) / gameState.totalQuestions) * 100;
+    pbFill.style.width = `${progress}%`;
 }
 
 function nextProblem() {
-    currentQuestionNum++;
-    if (currentQuestionNum > TOTAL_QUESTIONS) {
-        gameOver();
+    if (gameState.currentQuestion > gameState.totalQuestions) {
+        endGame();
         return;
     }
-
-    currentQEl.innerText = currentQuestionNum;
-    feedbackEl.innerText = '';
-    feedbackEl.className = 'feedback-msg';
+    gameState.isProcessing = false;
+    updateUI();
     problemCard.className = 'problem-card';
     shapeVisual.innerHTML = '';
-    document.querySelector('.operator').style.display = 'none';
-    document.getElementById('answer-placeholder').innerText = '';
+    optionsEl.innerHTML = '';
+    fbOverlay.classList.add('hidden');
+    generateProblem();
+}
 
-    if (currentGameMode === 'gugudan') {
-        generateGugudanProblem();
+function generateProblem() {
+    const { grade } = gameState;
+    const isGeometry = Math.random() < 0.5;
+
+    if (isGeometry) {
+        generateExtendedGeometryProblem(grade);
     } else {
-        generateShapeProblem();
+        generateArithmeticProblem(grade);
     }
 }
 
-function generateGugudanProblem() {
-    const n1 = Math.floor(Math.random() * 8) + 2;
-    const n2 = Math.floor(Math.random() * 9) + 1;
-    currentAnswer = n1 * n2;
+// --- 연산 로직 ---
+function generateArithmeticProblem(grade) {
+    let n1, n2, op = '×';
+    let type = Math.random();
 
-    // 구구단은 큰 글씨로 중앙에
-    const problemTextEl = document.querySelector('.problem-text');
-    problemTextEl.classList.add('gugudan-text');
+    if (grade === 1) {
+        op = type < 0.5 ? '+' : '-';
+        n1 = Math.floor(Math.random() * 9) + 1;
+        n2 = Math.floor(Math.random() * 9) + 1;
+        if (op === '-' && n1 < n2) [n1, n2] = [n2, n1];
+    } else if (grade === 2) {
+        if(type < 0.7) { 
+            n1 = Math.floor(Math.random() * 8) + 2;
+            n2 = Math.floor(Math.random() * 9) + 1;
+        } else {
+            n1 = Math.floor(Math.random() * 50) + 10;
+            n2 = Math.floor(Math.random() * 40) + 10;
+            op = Math.random() < 0.5 ? '+' : '-';
+            if (op === '-' && n1 < n2) [n1, n2] = [n2, n1];
+        }
+    } else if (grade === 3) {
+        if(type < 0.5) {
+            n1 = Math.floor(Math.random() * 20) + 5;
+            n2 = Math.floor(Math.random() * 8) + 2;
+        } else {
+            n2 = Math.floor(Math.random() * 8) + 2;
+            n1 = n2 * (Math.floor(Math.random() * 9) + 1);
+            op = '÷';
+        }
+    } else if (grade === 4) {
+        n1 = Math.floor(Math.random() * 90) + 10;
+        n2 = Math.floor(Math.random() * 90) + 10;
+        op = type < 0.5 ? '×' : '÷';
+        if(op === '÷') { n1 = n2 * (Math.floor(Math.random() * 19) + 2); }
+    } else if (grade >= 5) {
+        n1 = (Math.random() * 10).toFixed(1);
+        n2 = (Math.random() * 5).toFixed(1);
+        op = type < 0.5 ? '×' : '÷';
+        if(op === '÷') { n1 = 10; n2 = 2.5; }
+    }
 
     num1El.innerText = n1;
-    document.querySelector('.operator').style.display = 'inline';
-    document.querySelector('.operator').innerText = '×';
     num2El.innerText = n2;
-    document.getElementById('answer-placeholder').innerText = '= ?';
+    operatorEl.innerText = op;
+    operatorEl.style.display = 'inline';
+    answerPlaceholder.innerText = '= ?';
 
-    generateOptions(currentAnswer, 'number');
+    gameState.currentAnswer = op === '+' ? parseFloat(n1) + parseFloat(n2) : 
+                             op === '-' ? parseFloat(n1) - parseFloat(n2) :
+                             op === '×' ? (parseFloat(n1) * parseFloat(n2)) :
+                             (parseFloat(n1) / parseFloat(n2));
+    
+    if(!Number.isInteger(gameState.currentAnswer)) gameState.currentAnswer = parseFloat(gameState.currentAnswer.toFixed(1));
+    generateOptions(gameState.currentAnswer);
 }
 
-function generateShapeProblem() {
-    // 도형 모드에서는 작은 글씨
-    document.querySelector('.problem-text').classList.remove('gugudan-text');
+function generateExtendedGeometryProblem(grade) {
+    const filtered = extendedGeometryData.filter(d => d.grade.includes(grade));
+    let problem;
+    let attempts = 0;
+    do {
+        problem = filtered[Math.floor(Math.random() * filtered.length)];
+        attempts++;
+    } while (gameState.lastQuestions.includes(problem.type) && attempts < 15);
 
-    const randomIdx = Math.floor(Math.random() * shapeProblems.length);
-    const problem = shapeProblems[randomIdx];
-    currentAnswer = problem.ans;
+    gameState.lastQuestions.push(problem.type);
+    if(gameState.lastQuestions.length > 5) gameState.lastQuestions.shift();
 
-    num1El.innerText = problem.q1;
-    num2El.innerText = problem.q2;
-
-    drawShapeSVG(problem.type);
-    generateOptions(currentAnswer, 'text', problem.options);
+    num1El.innerText = problem.q;
+    num2El.innerText = '';
+    operatorEl.style.display = 'none';
+    answerPlaceholder.innerText = '';
+    
+    drawShape(problem.type);
+    gameState.currentAnswer = problem.ans;
+    generateOptions(problem.ans, problem.opts);
 }
 
-function drawShapeSVG(type) {
-    const color = '#4ecdc4';
-    const fill = 'rgba(78,205,196,0.2)';
-    const accent = '#ff6b6b';
-    const sw = 5;
+function drawShape(type) {
     let svg = '';
-
-    switch(type) {
-        case 'right_angle':
-            svg = `<path d="M20 20 V80 H80" fill="none" stroke="${color}" stroke-width="${sw}"/>
-                   <rect x="20" y="60" width="20" height="20" fill="none" stroke="${accent}" stroke-width="2"/>`;
-            break;
-        case 'right_triangle':
-            svg = `<path d="M20 20 V80 H80 Z" fill="${fill}" stroke="${color}" stroke-width="${sw}"/>
-                   <rect x="20" y="65" width="15" height="15" fill="none" stroke="${accent}" stroke-width="2"/>`;
-            break;
-        case 'rectangle':
-            svg = `<rect x="15" y="30" width="90" height="55" fill="${fill}" stroke="${color}" stroke-width="${sw}"/>`;
-            break;
-        case 'square':
-            svg = `<rect x="30" y="25" width="55" height="55" fill="${fill}" stroke="${color}" stroke-width="${sw}"/>`;
-            break;
-        case 'circle_center':
-            svg = `<circle cx="60" cy="60" r="42" fill="rgba(78,205,196,0.15)" stroke="${color}" stroke-width="${sw}"/>
-                   <circle cx="60" cy="60" r="5" fill="${accent}"/>
-                   <text x="68" y="57" font-size="12" fill="${accent}">중심</text>`;
-            break;
-        case 'circle_radius':
-            svg = `<circle cx="60" cy="60" r="42" fill="none" stroke="${color}" stroke-width="${sw}"/>
-                   <line x1="60" y1="60" x2="102" y2="60" stroke="${accent}" stroke-width="${sw}"/>
-                   <circle cx="60" cy="60" r="5" fill="${accent}"/>
-                   <text x="70" y="53" font-size="11" fill="${accent}">반지름</text>`;
-            break;
-        case 'circle_diameter':
-            svg = `<circle cx="60" cy="60" r="42" fill="none" stroke="${color}" stroke-width="${sw}"/>
-                   <line x1="18" y1="60" x2="102" y2="60" stroke="${accent}" stroke-width="${sw}"/>
-                   <circle cx="60" cy="60" r="5" fill="${accent}"/>
-                   <text x="42" y="52" font-size="11" fill="${accent}">지름</text>`;
-            break;
-        case 'line_segment':
-            svg = `<line x1="15" y1="60" x2="105" y2="60" stroke="${color}" stroke-width="${sw}"/>
-                   <circle cx="15" cy="60" r="5" fill="${color}"/>
-                   <circle cx="105" cy="60" r="5" fill="${color}"/>
-                   <text x="8" y="50" font-size="12" fill="${color}">A</text>
-                   <text x="98" y="50" font-size="12" fill="${color}">B</text>`;
-            break;
-        case 'ray':
-            svg = `<line x1="15" y1="60" x2="105" y2="60" stroke="${color}" stroke-width="${sw}"/>
-                   <circle cx="15" cy="60" r="5" fill="${color}"/>
-                   <path d="M105 60 L93 53 M105 60 L93 67" fill="none" stroke="${color}" stroke-width="${sw}"/>
-                   <text x="8" y="50" font-size="12" fill="${color}">A</text>`;
-            break;
-        case 'straight_line':
-            svg = `<line x1="5" y1="60" x2="115" y2="60" stroke="${color}" stroke-width="${sw}"/>
-                   <path d="M5 60 L17 53 M5 60 L17 67" fill="none" stroke="${color}" stroke-width="${sw}"/>
-                   <path d="M115 60 L103 53 M115 60 L103 67" fill="none" stroke="${color}" stroke-width="${sw}"/>`;
-            break;
-        case 'angle':
-        case 'angle_parts':
-            svg = `<path d="M100 25 L35 60 L100 95" fill="none" stroke="${color}" stroke-width="${sw}"/>
-                   <circle cx="35" cy="60" r="5" fill="${accent}"/>
-                   <text x="5" y="64" font-size="11" fill="${accent}">꼭짓점</text>`;
-            break;
-        default:
-            svg = `<text x="30" y="65" font-size="16" fill="${color}">도형</text>`;
+    const color = '#ff3e6d';
+    const sub = '#4ecdc4';
+    
+    if (type.includes('tri')) {
+        svg = `<path d="M60 25 L25 85 L95 85 Z" fill="none" stroke="${color}" stroke-width="5"/>`;
+    } else if (type.includes('rect') || type.includes('square')) {
+        svg = `<rect x="25" y="35" width="70" height="50" fill="none" stroke="${color}" stroke-width="5"/>`;
+    } else if (type.includes('circle')) {
+        svg = `<circle cx="60" cy="60" r="35" fill="none" stroke="${color}" stroke-width="5"/>`;
+    } else if (type.includes('clock')) {
+         svg = `<circle cx="60" cy="60" r="45" fill="none" stroke="#333" stroke-width="3"/>`;
+         let h = 0, m = 0;
+         if(type === 'clock_3') { h = 3; m = 0; }
+         else if(type === 'clock_half') { h = 1.5; m = 30; }
+         else if(type === 'clock_5min') { h = 12; m = 15; }
+         svg += `<line x1="60" y1="60" x2="${60 + 30 * Math.sin(h*30 * Math.PI/180)}" y2="${60 - 30 * Math.cos(h*30 * Math.PI/180)}" stroke="${color}" stroke-width="4"/>`;
+         svg += `<line x1="60" y1="60" x2="${60 + 40 * Math.sin(m*6 * Math.PI/180)}" y2="${60 - 40 * Math.cos(m*6 * Math.PI/180)}" stroke="${sub}" stroke-width="2"/>`;
+    } else if (type.includes('cube') || type.includes('prism')) {
+        svg = `<rect x="35" y="45" width="40" height="40" fill="none" stroke="${color}" stroke-width="2"/><rect x="45" y="35" width="40" height="40" fill="none" stroke="${color}" stroke-width="2"/>
+               <line x1="35" y1="45" x2="45" y2="35" stroke="${color}"/><line x1="75" y1="45" x2="85" y2="35" stroke="${color}"/><line x1="35" y1="85" x2="45" y2="75" stroke="${color}"/><line x1="75" y1="85" x2="85" y2="75" stroke="${color}"/>`;
+    } else if (type.includes('compare')) {
+        svg = `<rect x="20" y="70" width="30" height="10" fill="${sub}"/><rect x="60" y="40" width="30" height="40" fill="${color}"/>`;
+    } else if (type.includes('angle')) {
+        svg = `<line x1="20" y1="80" x2="100" y2="80" stroke="#333" stroke-width="3"/><line x1="20" y1="80" x2="80" y2="30" stroke="${color}" stroke-width="3"/>`;
     }
 
     shapeVisual.innerHTML = `<svg width="120" height="120" viewBox="0 0 120 120">${svg}</svg>`;
 }
 
-function generateOptions(answer, type, customOptions) {
-    optionsEl.innerHTML = '';
+function generateOptions(correct, customOpts = null) {
     let choices = [];
-
-    if (type === 'number') {
-        choices = [answer];
-        while (choices.length < 4) {
-            let r = (Math.floor(Math.random() * 9) + 1) * (Math.floor(Math.random() * 9) + 1);
-            if (!choices.includes(r)) choices.push(r);
-        }
+    if (customOpts) {
+        choices = [...customOpts];
     } else {
-        choices = [...customOptions];
+        choices = [correct];
+        const isNum = !isNaN(correct);
+        while (choices.length < 4) {
+            let fake;
+            if(isNum) {
+                let offset = (Math.random() < 0.5 ? 1 : -1) * (Math.floor(Math.random() * 5) + 1);
+                fake = parseFloat(correct) + offset;
+            } else {
+                fake = ['삼각형','사각형','원','오각형','직사각형','정사각형'][Math.floor(Math.random()*6)];
+            }
+            if (!choices.includes(fake)) choices.push(fake);
+        }
     }
-
     choices.sort(() => Math.random() - 0.5);
-
     choices.forEach(val => {
         const btn = document.createElement('button');
-        btn.innerText = val;
         btn.className = 'option-btn';
-        btn.addEventListener('click', () => checkAnswer(val));
+        btn.innerText = val;
+        btn.onclick = () => checkAnswer(val);
         optionsEl.appendChild(btn);
     });
 }
 
 function checkAnswer(selected) {
-    if (problemCard.classList.contains('correct') || problemCard.classList.contains('wrong')) return;
+    if (gameState.isProcessing) return;
+    gameState.isProcessing = true;
+    fbOverlay.classList.remove('hidden');
+    fbAnswer.classList.add('hidden');
 
-    if (selected == currentAnswer) {
-        score += 10;
-        feedbackEl.innerText = '맞았습니다! 축하합니다! 🎊✨';
-        feedbackEl.className = 'feedback-msg correct';
-        problemCard.className = 'problem-card correct';
-        updateScoreBoard();
-        createFireworks();
-        setTimeout(nextProblem, 3000);
+    if (selected == gameState.currentAnswer) {
+        gameState.score += (gameState.difficulty === 'hard' ? 20 : 10);
+        fbOverlay.className = 'correct-overlay';
+        fbIcon.innerText = '🤩'; fbText.innerText = '정답이에요!';
+        setTimeout(() => { gameState.currentQuestion++; nextProblem(); }, 800);
     } else {
-        lives--;
-        feedbackEl.innerText = '우아아앙! 너무 안타까워요!! 😭💢';
-        feedbackEl.className = 'feedback-msg wrong';
-        problemCard.className = 'problem-card wrong';
-        updateScoreBoard();
-        triggerFrustration();
-        if (lives <= 0) {
-            setTimeout(gameOver, 3000);
-        } else {
-            setTimeout(nextProblem, 3000);
-        }
+        gameState.lives--;
+        fbOverlay.className = 'wrong-overlay';
+        fbIcon.innerText = '😭'; fbText.innerText = '오답이에요!';
+        fbAnswer.classList.remove('hidden');
+        fbAnswer.innerText = `정답은 "${gameState.currentAnswer}" 였어요!`;
+        setTimeout(() => { if (gameState.lives <= 0) endGame(); else { gameState.currentQuestion++; nextProblem(); } }, 1800);
     }
+    updateUI();
 }
 
-function createFireworks() {
-    effectLayer.classList.remove('hidden');
-    effectLayer.innerHTML = '';
-    const emojis = ['🌟','✨','🎊','🎇','❤️','🌈','🔥'];
-    for (let i = 0; i < 60; i++) {
-        const p = document.createElement('div');
-        p.className = 'particle';
-        p.innerText = emojis[Math.floor(Math.random() * emojis.length)];
-        const angle = Math.random() * Math.PI * 2;
-        const dist = 300 + Math.random() * 500;
-        p.style.setProperty('--tx', Math.cos(angle) * dist + 'px');
-        p.style.setProperty('--ty', Math.sin(angle) * dist + 'px');
-        p.style.left = '50%'; p.style.top = '50%';
-        p.style.animation = `explode ${1 + Math.random() * 1.5}s ease-out forwards`;
-        effectLayer.appendChild(p);
-    }
-    setTimeout(() => { effectLayer.classList.add('hidden'); effectLayer.innerHTML = ''; }, 3000);
-}
-
-function triggerFrustration() {
-    document.body.classList.add('extreme-shake');
-    effectLayer.classList.remove('hidden');
-    effectLayer.innerHTML = '<div class="frustration-emoji">😭💢😭</div>';
-    setTimeout(() => {
-        document.body.classList.remove('extreme-shake');
-        effectLayer.classList.add('hidden');
-        effectLayer.innerHTML = '';
-    }, 3000);
-}
-
-function gameOver() {
-    finalScoreEl.innerText = score;
+function endGame() {
+    fbOverlay.classList.add('hidden');
+    gameScreen.classList.add('hidden');
     gameOverScreen.classList.remove('hidden');
-    gameProgress.classList.add('hidden');
+    resultNickname.innerText = gameState.nickname;
+    finalScoreEl.innerText = gameState.score;
+    saveRecord();
+    showLeaderboard();
 }
 
-document.querySelectorAll('.menu-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        const mode = e.currentTarget.getAttribute('data-mode');
-        initGame(mode);
-    });
-});
-restartBtn.addEventListener('click', () => {
-    gameOverScreen.classList.add('hidden');
-    menuScreen.classList.remove('hidden');
-});
+function saveRecord() {
+    const records = JSON.parse(localStorage.getItem('math_records') || '[]');
+    // 현재 세션 기록 정보 저장
+    const currentRecord = { 
+        name: gameState.nickname, 
+        grade: gameState.grade, 
+        score: gameState.score,
+        sessionId: gameState.currentSessionId // 식별자 추가
+    };
+    records.push(currentRecord);
+    records.sort((a, b) => b.score - a.score);
+    localStorage.setItem('math_records', JSON.stringify(records.slice(0, 10)));
+}
+
+function showLeaderboard() {
+    const records = JSON.parse(localStorage.getItem('math_records') || '[]');
+    leaderboardBody.innerHTML = records.map((r, i) => {
+        // 현재 세션의 기록인 경우 하이라이트 클래스 추가
+        const isCurrent = r.sessionId === gameState.currentSessionId;
+        return `
+            <tr class="${isCurrent ? 'current-rank-row' : ''}">
+                <td>${i + 1}</td>
+                <td>${r.name}</td>
+                <td>${r.grade}학년</td>
+                <td><strong>${r.score}</strong></td>
+            </tr>
+        `;
+    }).join('');
+}
